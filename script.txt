@@ -1,0 +1,66 @@
+// ==UserScript==
+// @name         Yout-ube NoAds
+// @namespace    http://tampermonkey.net/
+// @version      1
+// @description  Opens yout-ube in a new tab. On the current tab: forces navigation to the video, then aggressively mutes and pauses.
+// @author       RyZyX35
+// @match        https://www.youtube.com/*
+// @grant        none
+// @run-at       document-start
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    if (window.self !== window.top) return;
+
+    document.addEventListener('click', function(e) {
+        var target = e.target.closest('a');
+
+        if (target && target.href.includes('/watch?v=') && e.button === 0) {
+
+            e.preventDefault();
+            e.stopPropagation();
+            var newUrl = target.href.replace('youtube.com', 'yout-ube.com');
+            window.open(newUrl, '_blank');
+            sessionStorage.setItem('tm_force_mode', Date.now());
+            window.location.href = target.href;
+        }
+    }, true);
+
+
+    document.addEventListener('play', function(e) {
+        var clickTime = sessionStorage.getItem('tm_force_mode');
+
+        // If we are in "Force Mode" (clicked recently)
+        if (clickTime && (Date.now() - parseInt(clickTime) < 15000)) {
+            if (e.target.tagName === 'VIDEO') {
+                e.preventDefault();
+                e.target.pause();
+                e.target.muted = true;
+                e.target.volume = 0;
+                console.log('Tampermonkey: Video force-paused via EventListener.');
+            }
+        }
+    }, true);
+
+
+    setInterval(function() {
+        var clickTime = sessionStorage.getItem('tm_force_mode');
+        if (clickTime && (Date.now() - parseInt(clickTime) < 15000)) {
+             var video = document.querySelector('video.html5-main-video');
+             if (video && !video.paused) {
+                 video.pause();
+                 video.muted = true;
+             }
+        }
+    }, 500);
+
+    setInterval(function() {
+        var clickTime = sessionStorage.getItem('tm_force_mode');
+        if (clickTime && (Date.now() - parseInt(clickTime) > 15000)) {
+             sessionStorage.removeItem('tm_force_mode');
+        }
+    }, 2000);
+
+})();
